@@ -1,59 +1,41 @@
 package CRUD;
 
-import java.io.BufferedReader;
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.ProtocolException;
-import java.net.URL;
-import java.net.URLEncoder;
-import java.util.HashMap;
-import java.util.Map;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 
 public class PeticionHttp {
 
-	public static void main(String[] args) throws MalformedURLException, ProtocolException, IOException {
-		URL url = new URL("https://httpbin.org/#/HTTP_Methods");
-	    //URL url = new URL("https://www.youtube.com");
-	    HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+	public static void main(String[] args) throws IOException, InterruptedException, URISyntaxException {
+		HttpClient peticion = HttpClient.newBuilder().version(HttpClient.Version.HTTP_2).build();
+		
+		URI url = URI.create("http://localhost:8090/api/v1/student/");
+		URI urlUPDATE = URI.create("http://localhost:8090/api/v1/student/3?name=Roberto&email=bb@mgail.com");
+		URI urldelete = URI.create("http://localhost:8090/api/v1/student/3?");
+	    
+	    String json = "{\"name\":\"Robert\",\"email\":\"Robert@gmail.com\",\"age\":33,\"date\":\"2020-10-08\"}";   
 
-	    connection.setRequestMethod("POST");
-	    Map<String, String> params = new HashMap<>();
-	    params.put("v", "dQw4w9WgXcQ");
+	    //Este método no es idempotente por tanto funciona bien la primera vez que se ejecuta el programa pero debe esta comentado la segunda. 
+	    //De lo contrario hará un nuevo insert y fallará ya que el mail del json es el mismo
+		HttpResponse<String> post = peticion.send(HttpRequest.newBuilder().POST(HttpRequest.BodyPublishers.ofString(json)).uri(url)
+				.setHeader("User-Agent", "Java 11 HttpClient Bot").header("Content-Type", "application/json").build(), HttpResponse.BodyHandlers.ofString()); 
+		  
+		HttpResponse<String> put = peticion.send(HttpRequest.newBuilder().PUT(HttpRequest.BodyPublishers.noBody()).uri(urlUPDATE)
+				.setHeader("User-Agent", "Java 11 HttpClient Bot").header("Content-Type", "application/json").build(), HttpResponse.BodyHandlers.ofString());
+		
+		HttpResponse<String> delete = peticion.send(HttpRequest.newBuilder().DELETE().uri(urldelete)
+				.setHeader("User-Agent", "Java 11 HttpClient Bot").header("Content-Type", "application/json").build(), HttpResponse.BodyHandlers.ofString());
+		
+		HttpResponse<String> get = peticion.send(HttpRequest.newBuilder().GET().uri(url).build(), HttpResponse.BodyHandlers.ofString());
+	   
+	   
+		System.out.println("Estado del código get: " +get.statusCode());
+		
+		System.out.println("Respuesta:");
 
-	    StringBuilder postData = new StringBuilder();
-	    for (Map.Entry<String, String> param : params.entrySet()) {
-	        if (postData.length() != 0) {
-	            postData.append('&');
-	        }
-	        postData.append(URLEncoder.encode(param.getKey(), "UTF-8"));
-	        postData.append('=');
-	        postData.append(URLEncoder.encode(String.valueOf(param.getValue()), "UTF-8"));
-	    }
-
-	    byte[] postDataBytes = postData.toString().getBytes("UTF-8");
-	    connection.setDoOutput(true);
-	    try (DataOutputStream writer = new DataOutputStream(connection.getOutputStream())) {
-	        writer.write(postDataBytes);
-	        writer.flush();
-	        writer.close();
-
-	        StringBuilder content;
-
-	        try (BufferedReader in = new BufferedReader(
-	                new InputStreamReader(connection.getInputStream()))) {
-	        String line;
-	        content = new StringBuilder();
-	           while ((line = in.readLine()) != null) {
-	                content.append(line);
-	                content.append(System.lineSeparator());
-	            }
-	        }
-	        System.out.println(content.toString());
-	    } finally {
-	        connection.disconnect();
-	    }
-	}
+		System.out.println(get.body());
+		}
 }
